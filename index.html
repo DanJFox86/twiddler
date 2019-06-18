@@ -3,25 +3,177 @@
   <head>
     <script src="jquery.js"></script>
     <script src="data_generator.js"></script>
-  </head>
-  <body>
-    <script>
+    <script src="moment.js"></script>
+    <style>
 
+      body {
+        background-color: cyan;
+      }
+
+      h1
+       {
+        text-align: center;
+        font-size: 36px;
+        text-decoration: none;
+        text-transform: uppercase;
+
+      }
+
+      .tweet {
+        background-color : cyan;
+        color: black;
+        border-style: solid;
+        border-color: black;
+        border-width: 2px;
+      }
+
+      h4, #tweetTime {
+        font-weight: bold;
+      }
+
+
+    </style>
+  </head>
+  <body><div id="heading">
+      <h1>twiddler</h1>
+      <div id="button-container">
+        <button id="home" class="btn btn-light">home</button>
+        <button id ="more-tweets" class="timeLine btn btn-light">Refresh Tweets</button>
+      </div>
+      <div id="currentUser"><h4>Home Timeline</h4></div>
+    </div>
+    <div id="newTweet">
+      <form>
+        <label for="textArea"></label>
+        <textarea class="form-control" id="textArea" rows="4" placeholder="Tell us your secrets!"></textarea>
+        <button id="tweet" class="btn btn-light">tweet!</button>
+      </form>
+    </div>
+    <div id="tweets-container"></div>
+    <script>
       $(document).ready(function(){
         var $body = $('body');
-        $body.html('');
+        var $tweets_cont = $('#tweets-container');
+        var $span = $('span');
+        var $moretweets = $('#more-tweets');
+        var $userProfile = $('#currentUser');
 
-        var index = streams.home.length - 1;
-        while(index >= 0){
-          var tweet = streams.home[index];
-          var $tweet = $('<div></div>');
-          $tweet.text('@' + tweet.user + ': ' + tweet.message);
-          $tweet.appendTo($body);
-          index -= 1;
-        }
+        var justThisUserTweets = function (username) {
+          $tweets_cont.html('');
+          var index = streams.users[username].length - 1;
+          while (index >= 0) {
+            var tweet = streams.users[username][index];
+            var $tweet = $('<div class="tweet"></div>');
+            var tweetDate = '';
+            tweetDate += (tweet.created_at.getYear() + 1900);
+            tweetDate += tweet.created_at.getMonth() + 1 < 10 ? "0" : "";
+            tweetDate += tweet.created_at.getMonth() + 1;
+            tweetDate += tweet.created_at.getDate();
+            tweetDate += tweet.created_at.getHours() < 10 ? "0" : "";
+            tweetDate += tweet.created_at.getHours();
+            tweetDate += tweet.created_at.getMinutes() < 10 ? "0" : "";
+            tweetDate += tweet.created_at.getMinutes();
+            var timeSince = moment(tweetDate, "YYYYMMDDhhmm").fromNow();
+            var timeText = '';
+            timeText = "Posted " + timeSince;
+            $tweet.html('@' + tweet.user + ': ' + tweet.message + ' <div id="tweetTime"> ' + timeText + '</div>');
+            $tweet.appendTo($tweets_cont);
+            index -= 1;
+          }
+        };
 
+        var showHomeTweets = function () {
+          var index = streams.home.length - 1;
+          while (index >= 0) {
+            var tweet = streams.home[index];
+            var $tweet = $('<div class="tweet"></div>');
+            var tweetDate = '';
+            tweetDate += (tweet.created_at.getYear() + 1900);
+            tweetDate += tweet.created_at.getMonth() + 1 < 10 ? "0" : "";
+            tweetDate += tweet.created_at.getMonth() + 1;
+            tweetDate += tweet.created_at.getDate();
+            tweetDate += tweet.created_at.getHours() < 10 ? "0" : "";
+            tweetDate += tweet.created_at.getHours();
+            tweetDate += tweet.created_at.getMinutes() < 10 ? "0" : "";
+            tweetDate += tweet.created_at.getMinutes();
+            var timeSince = moment(tweetDate, "YYYYMMDDhhmm").fromNow();
+            var timeText = '';
+            timeText = "Posted " + timeSince;
+            $tweet.html('@<span class="' + tweet.user + '">' + tweet.user + '</span>: ' + tweet.message + ' <div id="tweetTime"> ' + timeText + '</div>');
+            $tweet.appendTo($tweets_cont);
+            index -= 1;
+          }
+          $span = $('span');
+        };
+
+        var sendTweet = function () {
+          if(!('currentUser' in streams.users)) {
+            streams.users.currentUser = [];
+          }
+          var tweet = {};
+          tweet.user = 'currentUser';
+          tweet.message = $('textarea').val();
+          tweet.created_at = new Date();
+          $('form').trigger('reset');
+          addTweet(tweet);
+        };
+
+        showHomeTweets();  // gets tweets on the page
+
+        $('form').submit(function (e) {
+          e.preventDefault();
+        });
+        $(document).on('click', '#tweet', function () {  // Sends your tweet
+          sendTweet();
+          $tweets_cont.html('');
+          showHomeTweets();
+        });
+
+        $(document).on('click', '#home', function () {  // takes you back to home page
+          $('#newTweet').show();
+          $userProfile.html('<h4>Home Timeline</h4');
+          $tweets_cont.html('');
+          showHomeTweets();
+
+          if($moretweets.hasClass('userTimeLine')) {  //resets class designation for refresh button so it gets everyone's tweets
+            $moretweets.removeClass('userTimeLine').addClass('timeLine');
+          }
+        });
+
+        $(document).on('click', '.timeLine', function () {  // Update Timeline: Clears out tweet container and refreshes with new tweets
+          $tweets_cont.html('');
+          showHomeTweets();
+        });
+
+        $(document).on('click', 'span', function () {  // Click on a username will refresh the timeLine with just their tweets
+          $('#newTweet').hide();
+          var username = this.className;
+          if(username === 'currentUser') {
+            $userProfile.html('<h4>Your Timeline</h4>');
+          } else {
+            $userProfile.html('<h4>@' + username + '\'s Timeline</h4>');
+          }
+          justThisUserTweets(username);
+
+          // Limit view tweets scope to current user
+          $moretweets.removeClass('timeLine').addClass('userTimeLine');  //Resets class designation for refresh button so it just gets this user's tweets
+          $(document).on('click', '.userTimeLine', function () {
+            $userProfile.html('<h4>@' + username + '\'s Timeline</h4>');
+            justThisUserTweets(username);
+          });
+        });
       });
-
     </script>
   </body>
 </html>
+
+
+
+<!––
+Creates two global variables, users and streams.
+
+    users is an array of strings -- all the usernames that you're following.
+    streams is an object with two properties, users and home.
+        streams.home is an array of all tweets from all the users you're following.
+        streams.users is an object with properties for each user. streams.users.shawndrost has all of shawndrost's tweets.
+––>
